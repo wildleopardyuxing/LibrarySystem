@@ -1,79 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Library System</title>
     <style>
-        /* 全局样式 */
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
         }
 
         .container {
-            width: 320px;
+            width: 80%;
+            margin: 2em auto;
             background-color: #fff;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 2em;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         h2 {
-            text-align: center;
-            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 1em;
         }
 
-        div {
-            margin-bottom: 10px;
+        ul {
+            list-style-type: none;
+            padding: 0;
         }
 
-        label {
-            display: block;
-            margin-bottom: 5px;
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
         }
 
-        input[type="text"],
-        input[type="password"],
-        input[type="button"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 10px;
+        li:not(:last-child) {
+            border-bottom: 1px solid #eee;
         }
 
-        input[type="button"] {
-            background-color: #007BFF;
-            color: #fff;
+        button {
+            padding: 6px 12px;
+            margin-left: 10px;
             border: none;
             cursor: pointer;
+            background-color: #007BFF;
+            color: #fff;
+            border-radius: 3px;
+            transition: background-color 0.2s;
         }
 
-        input[type="button"]:hover {
+        button:hover {
             background-color: #0056b3;
         }
 
-        #message {
-            margin-top: 20px;
-            color: red;
+        #new-book-title {
+            padding: 8px;
+            width: 70%;
+            border: 1px solid #ddd;
+            border-radius: 3px;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h2>Available Books</h2>
         <ul id="book-list"></ul>
 
         <h2>Add New Book</h2>
-        <input type="text" id="new-book-title" placeholder="Book Title">
-        <button onclick="addBook()">Add</button>
+        <div>
+            <input type="text" id="new-book-title" placeholder="Book Title">
+            <input type="file" id="book-cover">
+            <button onclick="addBook()">Add</button>
+        </div>
     </div>
 
     <script>
@@ -86,6 +90,7 @@
             for (let book of books) {
                 const listItem = document.createElement('li');
                 listItem.textContent = `${book.title} (Borrowed: ${book.borrowed})`;
+                listItem.innerHTML += `<img src="/uploads/${book.cover}" alt="${book.title} cover" width="50">`;
                 listItem.innerHTML += `<button onclick="borrowBook(${book.id})">Borrow</button>`;
                 listItem.innerHTML += `<button onclick="returnBook(${book.id})">Return</button>`;
                 listItem.innerHTML += `<button onclick="deleteBook(${book.id})">Delete</button>`;
@@ -96,10 +101,15 @@
         // Post（增）: 增加新书，提交信息到后台并保存
         async function addBook() {
             const title = document.getElementById('new-book-title').value;
+            const cover = document.getElementById('book-cover').files[0];
+
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('bookCover', cover);
+
             await fetch('/books', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: title })
+                body: formData
             });
             fetchBooks();
         }

@@ -1,18 +1,30 @@
 const express = require('express');
-const bodyParser = require('body-parser');
+const multer = require('multer');
 const path = require('path');
 
 const app = express();
 
-app.use(bodyParser.json());
-
-const books = [
-    { id: 1, title: 'Harry Potter', borrowed: false },
-    { id: 2, title: 'Lord of the Rings', borrowed: false }
-];
-
 // 设置静态文件目录，用于serve前端代码
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// 为封面设置存储路径和文件名
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, './public/uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
+
+// 固定设定初始的书籍列表
+const books = [
+    { id: 1, title: 'Harry Potter and the Philosopher\'s Stone', borrowed: false, cover: '1698490027264.jpg'},
+    { id: 2, title: 'The Lord of the Rings: The Fellowship of the Ring', borrowed: false, cover: '1698490863207.jpeg'}
+];
 
 // GET: 查找书籍
 app.get('/books', (req, res) => {
@@ -20,14 +32,19 @@ app.get('/books', (req, res) => {
 });
 
 // POST: 添加新书
-app.post('/books', (req, res) => {
+app.post('/books', upload.single('bookCover'), (req, res) => {
+    const title = req.body.title;
+    const coverFilename = req.file ? path.basename(req.file.path) : null;
+
     const newBook = {
         id: books.length + 1,
-        title: req.body.title,
-        borrowed: false
+        title: title,
+        borrowed: false,
+        cover: coverFilename
     };
+    
     books.push(newBook);
-    res.json(newBook);
+    res.json({ message: 'Book added successfully!', newBook });
 });
 
 // PUT: 借书
