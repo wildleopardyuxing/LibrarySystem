@@ -21,10 +21,26 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // 固定设定初始的书籍列表
-const books = [
-    { id: 1, title: 'Harry Potter and the Philosopher\'s Stone', borrowed: false, cover: '1698490027264.jpg'},
-    { id: 2, title: 'The Lord of the Rings: The Fellowship of the Ring', borrowed: false, cover: '1698490863207.jpeg'}
-];
+// TODO(xyu): 修改成数据库
+const books = [{
+    id: 1, 
+    title: '哈利·波特与魔法石',
+    author: '[英] J. K. 罗琳',
+    publisher: '人民文学出版社',
+    year: 2000,
+    location: {floor: 2, bookshelf: '10-3'},
+    borrowedDate: null,
+    cover: '1698490027264.jpg'
+}, {
+    id: 2,
+    title: '魔戒: 护戒使者',
+    author: '[英] J.R.R.托尔金',
+    publisher: '译林出版社',
+    year: 2013,
+    location: {floor: 3, bookshelf: '15-1'},
+    borrowedDate: null,
+    cover: '1698490863207.jpeg'
+}];
 
 // GET: 查找书籍
 app.get('/books', (req, res) => {
@@ -33,13 +49,16 @@ app.get('/books', (req, res) => {
 
 // POST: 添加新书
 app.post('/books', upload.single('bookCover'), (req, res) => {
-    const title = req.body.title;
     const coverFilename = req.file ? path.basename(req.file.path) : null;
 
     const newBook = {
         id: books.length + 1,
-        title: title,
-        borrowed: false,
+        title: req.body.title,
+        author: req.body.author,
+        publisher: req.body.publisher,
+        year: req.body.year,
+        location: {floor: req.body.floor, bookshelf: req.body.bookshelf},
+        borrowedDate: null,
         cover: coverFilename
     };
     
@@ -49,9 +68,17 @@ app.post('/books', upload.single('bookCover'), (req, res) => {
 
 // PUT: 借书
 app.put('/books/:id/borrow', (req, res) => {
+    let getCurrentDate = function() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const book = books.find(b => b.id === parseInt(req.params.id));
-    if (book && !book.borrowed) {
-        book.borrowed = true;
+    if (book && !book.borrowedDate) {
+        book.borrowedDate = getCurrentDate();
         res.json(book);
     } else {
         res.status(400).json({ message: 'Book not found or already borrowed' });
@@ -61,8 +88,8 @@ app.put('/books/:id/borrow', (req, res) => {
 // PUT: 还书
 app.put('/books/:id/return', (req, res) => {
     const book = books.find(b => b.id === parseInt(req.params.id));
-    if (book && book.borrowed) {
-        book.borrowed = false;
+    if (book && book.borrowedDate) {
+        book.borrowedDate = null;
         res.json(book);
     } else {
         res.status(400).json({ message: 'Book not found or not borrowed' });

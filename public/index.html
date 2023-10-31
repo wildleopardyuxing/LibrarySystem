@@ -9,15 +9,39 @@
 </head>
 
 <body>
+    <div class="header">
+        <img src="./logo.png" alt="logo" width="60px" height="60px">
+        <div>Library System 图书馆管理系统</div>
+    </div>
+    <div class="infobar">
+        <div class="role">
+            <span class="icon">&#9881;</span>
+            管理员
+        </div>
+    </div>
     <div class="container">
-        <h2>Available Books</h2>
-        <ul id="book-list"></ul>
-
-        <h2>Add New Book</h2>
-        <div>
-            <input type="text" id="new-book-title" placeholder="Book Title">
-            <input type="file" id="book-cover">
-            <button onclick="addBook()">Add</button>
+        <div class="menu">
+            <button id="books-button" class="selected" onclick="showSection('books')">现有书籍</button>
+            <button id="add-button" onclick="showSection('add')">增加新书</button>
+        </div>
+        <div class="books" id="books-section">
+            <div id="book-list"></div>
+        </div>
+        <div class="add" id="add-section" style="display: none;">
+            <div class="addItem">
+                <input type="file" id="book-cover" accept="image/*" style="display: none;" onchange="updatePreview(this)">
+                <label for="book-cover" id="cover-preview"></label>
+                <div class='bookInfo'>
+                    <div class='title'>书名：<input type="text" id="new-book-title"></div>
+                    <div class='author'>作者：<input type="text" id="new-book-author"></div>
+                    <div class='publisher'>出版社：<input type="text" id="new-book-publisher"></div>
+                    <div class='year'>出版年份：<input type="text" id="new-book-year"></div>
+                    <div class='location'>馆藏位置：楼层<input type="text" id="new-book-floor">，书架<input type="text" id="new-book-bookshelf"></div>
+                </div>
+                <div class='action'>
+                    <button onclick="addBook()">增加书籍</button>
+                </div>
+            </div>
         </div>
     </div>
     <script src="./script.js"></script>
