@@ -14,7 +14,7 @@ async function fetchBooks() {
                 <div class='author'>作者：${book.author}</div>
                 <div class='publisher'>出版社：${book.publisher}</div>
                 <div class='year'>出版年份：${book.year}</div>
-                <div class='location'>馆藏位置：楼层${book.location.floor}，书架${book.location.bookshelf}</div>
+                <div class='location'>馆藏位置：楼层${book.floor}，书架${book.bookshelf}</div>
                 <div class='borrowInfo'>借阅信息：${book.borrowedDate ? book.borrowedDate : '在馆'}</div>
             </div>
             <div class='action'>

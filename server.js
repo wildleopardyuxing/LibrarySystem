@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 
@@ -20,31 +21,23 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 固定设定初始的书籍列表
-// TODO(xyu): 修改成数据库
-const books = [{
-    id: 1, 
-    title: '哈利·波特与魔法石',
-    author: '[英] J. K. 罗琳',
-    publisher: '人民文学出版社',
-    year: 2000,
-    location: {floor: 2, bookshelf: '10-3'},
-    borrowedDate: null,
-    cover: '1698490027264.jpg'
-}, {
-    id: 2,
-    title: '魔戒: 护戒使者',
-    author: '[英] J.R.R.托尔金',
-    publisher: '译林出版社',
-    year: 2013,
-    location: {floor: 3, bookshelf: '15-1'},
-    borrowedDate: null,
-    cover: '1698490863207.jpeg'
-}];
+// 初始化数据库连接
+const db = new sqlite3.Database('./library.db', (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the library database.');
+});
 
 // GET: 查找书籍
 app.get('/books', (req, res) => {
-    res.json(books);
+    db.all('SELECT * FROM Books', [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
 });
 
 // POST: 添加新书
@@ -52,62 +45,98 @@ app.post('/books', upload.single('bookCover'), (req, res) => {
     const coverFilename = req.file ? path.basename(req.file.path) : null;
 
     const newBook = {
-        id: books.length + 1,
         title: req.body.title,
         author: req.body.author,
         publisher: req.body.publisher,
         year: req.body.year,
-        location: {floor: req.body.floor, bookshelf: req.body.bookshelf},
+        floor: req.body.floor,
+        bookshelf: req.body.bookshelf,
         borrowedDate: null,
         cover: coverFilename
     };
     
-    books.push(newBook);
-    res.json({ message: 'Book added successfully!', newBook });
+    const sql = `INSERT INTO Books (title, author, publisher, year, floor, bookshelf, borrowedDate, cover) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [newBook.title, newBook.author, newBook.publisher, newBook.year, newBook.floor, newBook.bookshelf, newBook.borrowedDate, newBook.cover];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        newBook.id = this.lastID; // 获取新插入行的ID
+        res.json({ message: 'Book added successfully!', newBook });
+    });
 });
 
 // PUT: 借书
 app.put('/books/:id/borrow', (req, res) => {
-    let getCurrentDate = function() {
+    const getCurrentDate = () => {
         const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return today.toISOString().split('T')[0];
     };
 
-    const book = books.find(b => b.id === parseInt(req.params.id));
-    if (book && !book.borrowedDate) {
-        book.borrowedDate = getCurrentDate();
-        res.json(book);
-    } else {
-        res.status(400).json({ message: 'Book not found or already borrowed' });
-    }
+    const sql = `UPDATE Books SET borrowedDate = ? WHERE id = ? AND borrowedDate IS NULL`;
+    const params = [getCurrentDate(), req.params.id];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        if (this.changes === 0) {
+            res.status(400).json({ message: 'Book not found or already borrowed' });
+        } else {
+            res.json({ message: 'Book borrowed successfully' });
+        }
+    });
 });
 
 // PUT: 还书
 app.put('/books/:id/return', (req, res) => {
-    const book = books.find(b => b.id === parseInt(req.params.id));
-    if (book && book.borrowedDate) {
-        book.borrowedDate = null;
-        res.json(book);
-    } else {
-        res.status(400).json({ message: 'Book not found or not borrowed' });
-    }
+    const sql = `UPDATE Books SET borrowedDate = NULL WHERE id = ? AND borrowedDate IS NOT NULL`;
+    const params = [req.params.id];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        if (this.changes === 0) {
+            res.status(400).json({ message: 'Book not found or not borrowed' });
+        } else {
+            res.json({ message: 'Book returned successfully' });
+        }
+    });
 });
 
 // DELETE: 删除书籍
 app.delete('/books/:id', (req, res) => {
-    const bookIndex = books.findIndex(b => b.id === parseInt(req.params.id));
-    if (bookIndex !== -1) {
-        books.splice(bookIndex, 1);
-        res.json({ message: 'Book deleted successfully' });
-    } else {
-        res.status(400).json({ message: 'Book not found' });
-    }
+    const sql = `DELETE FROM Books WHERE id = ?`;
+    const params = [req.params.id];
+
+    db.run(sql, params, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        if (this.changes === 0) {
+            res.status(400).json({ message: 'Book not found' });
+        } else {
+            res.json({ message: 'Book deleted successfully' });
+        }
+    });
 });
 
+// 监听端口
 const PORT = 3000;
 app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
+});
+
+// 关闭数据库连接
+process.on('SIGINT', () => {
+  db.close(() => {
+    console.log('Database connection closed.');
+    process.exit(0);
+  });
 });
